@@ -14,7 +14,7 @@ def cleanUpVideoNames(dir, pattern, titlePattern):
 
         index = title[:3]
         frameNumber = title[-3:]
-        tag = title[3:-3]
+        tag = title[4:-3]
 
         os.rename(pathAndFilename,
                   os.path.join(dir,titlePattern % index, tag, frameNumber)
@@ -95,5 +95,7 @@ def incrementFrameCounterForAllVideosIdentifiedInTheCSVFile(csvFilePath,imageDir
 # rename(r'./img/',r'*.jpg',r'new(%s)')
 
 # removeOver180Frames(r'./', r'*.jpg')
+
+cleanUpVideoNames(r'./test',r'*.jpg',r'%s_%s_%s')
 
 incrementFrameCounterForAllVideosIdentifiedInTheCSVFile('frameTimingAdjustments.csv',r'./test/')
