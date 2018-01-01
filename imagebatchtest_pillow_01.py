@@ -8,6 +8,14 @@ import glob, os, shutil, csv
 
 
 
+def checkFor3DigitFrameNumbers(dir, pattern)
+    for pathAndFilename in glob.iglob(os.path.join(dir,pattern)):
+        title, ext = os.path.splitext(os.path.basename(pathAndFilename))
+
+        frameNumber = title[-3:]
+        frameNumberInt = int(frameNumber)
+        print(frameNumberInt)
+
 def cleanUpVideoNames(dir, pattern, titlePattern):
     for pathAndFilename in glob.iglob(os.path.join(dir,pattern)):
         title, ext = os.path.splitext(os.path.basename(pathAndFilename))
@@ -17,7 +25,7 @@ def cleanUpVideoNames(dir, pattern, titlePattern):
         tag = title[4:-3]
 
         os.rename(pathAndFilename,
-                  os.path.join(dir,titlePattern % index, tag, frameNumber)
+                  os.path.join(dir,titlePattern % (index, tag, frameNumber) + ext))
 
 
 def rename(dir, pattern, titlePattern):
@@ -52,7 +60,7 @@ def identifyAndAdjustTimeAdjustedVideos(dir, pattern, timeAdjustmentData):
     for pathAndFilename in glob.iglob(os.path.join(dir,pattern)):
         title, ext = os.path.splitext(os.path.basename(pathAndFilename))
         if tag in title:
-            print('found a match: ' + title)
+            # print('found a match: ' + title)
             incrementFrameCounterForAGivenImage(pathAndFilename, startFrame)
 
 
@@ -72,7 +80,7 @@ def incrementFrameCounterForAGivenImage(pathAndFilename,counterIncrement):
                              
 def incrementFrameCounterForAllVideosIdentifiedInTheCSVFile(csvFilePath,imageDirectory):
     with open (csvFilePath, 'r') as csvfile:
-        reader = csv.reader(csvfile, delimiter = ',', quotechar = '|')
+        reader = csv.reader(csvfile, delimiter = ',', quotechar = '|')  
         counter = 0
         for row in reader:
             # print(row[0])
@@ -88,14 +96,13 @@ def incrementFrameCounterForAllVideosIdentifiedInTheCSVFile(csvFilePath,imageDir
     # del tags[0]
     # print(tags)
         
-    
+
             
-
-
-# rename(r'./img/',r'*.jpg',r'new(%s)')
 
 # removeOver180Frames(r'./', r'*.jpg')
 
-cleanUpVideoNames(r'./test',r'*.jpg',r'%s_%s_%s')
+checkFor3DigitFrameNumbers(r'./img',r'*.jpg')
 
-incrementFrameCounterForAllVideosIdentifiedInTheCSVFile('frameTimingAdjustments.csv',r'./test/')
+# cleanUpVideoNames(r'./img',r'*.jpg',r'index_%stag_%s_frameNumber_%s')
+
+# incrementFrameCounterForAllVideosIdentifiedInTheCSVFile('frameTimingAdjustments.csv',r'./img/')
