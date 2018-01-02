@@ -68,16 +68,7 @@ def cleanRename(pathAndFilename,titlePattern, index, tag, frameNumber):
               os.path.dirname(pathAndFilename) + '/' + titlePattern % (index, tag, frameNumber) + ext)
     
 
-def removeOver180Frames(dir, pattern):
-    for pathAndFilename in glob.iglob(os.path.join(dir,pattern)):
-        title, ext = os.path.splitext(os.path.basename(pathAndFilename))
-        # print(title)
-        lastThreeChars = title[-3:]
-        # print(lastThreeChars)
-        lastThreeCharsInt = int(lastThreeChars)
-        # print(lastThreeCharsInt)
-        if lastThreeCharsInt > 180:
-            shutil.move(title+ext,'over180FramesFolder/' + title + ext)
+
 
 def identifyAndAdjustTimeAdjustedVideos(dir, pattern, timeAdjustmentData):
     tag = timeAdjustmentData[0]
@@ -125,6 +116,17 @@ def incrementFrameCounterForAllVideosIdentifiedInTheCSVFile(csvFilePath,imageDir
     # print(tags)
         
 
+def removeOver180Frames(dir, pattern):
+    for pathAndFilename in glob.iglob(os.path.join(dir,pattern)):
+        title, ext = os.path.splitext(os.path.basename(pathAndFilename))
+
+        index, tag, frameNumber = extractInfoFromFormattedImageName(title)
+       
+        if frameNumber > 179:
+            print('This image has a frame number higher than 179: ' + os.path.join(dir,title+ext))
+            print('Moving it to over180FramesFolder/')
+            shutil.move(os.path.join(dir,title+ext),'./over180FramesFolder/' + title + ext)
+
 
 ## Main Program Execution           
 
@@ -135,6 +137,12 @@ def incrementFrameCounterForAllVideosIdentifiedInTheCSVFile(csvFilePath,imageDir
 
 # 3. Adjust Frame Numbers to Correspond to Start Times Defined In CSV File
 
-incrementFrameCounterForAllVideosIdentifiedInTheCSVFile('frameTimingAdjustments.csv',r'./img/')
+# incrementFrameCounterForAllVideosIdentifiedInTheCSVFile('frameTimingAdjustments.csv',r'./img/')
 
-# removeOver180Frames(r'./', r'*.jpg')
+# 4. Remove all images with frameNumbers higher than 179.
+
+# removeOver180Frames(r'./img/', r'*.jpg')
+
+# 5. Start some image crep.
+
+
