@@ -1,6 +1,6 @@
-# Development Log for the Simultania Project
+# Development Log for the Tootsie Project
 
-_Development notes for the simultania project._
+_Development notes for the Tootsie project._
 
 ---
 
