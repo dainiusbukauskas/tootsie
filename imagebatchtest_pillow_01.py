@@ -1,30 +1,23 @@
 from PIL import Image
 import glob, os, shutil, csv
 
-# im = Image.open("test.jpg")
-# im.rotate(45).show()
 
-# tags = []
+standardCleanTitlePattern = r'index_%s_tag_%s_frameNumber_%s'
 
+def tryToExtractInfoFromRawImageName(title): # This function extracts the data from the original raw image file names.
 
-
-def checkFor3DigitFrameNumbers(dir, pattern):
-    for pathAndFilename in glob.iglob(os.path.join(dir,pattern)):
-        title, ext = os.path.splitext(os.path.basename(pathAndFilename))
-        frameNumber = tryToExtractFrameNumber(title)
-        print(frameNumber)
-        
-def tryToExtractInfoFromRawImageName(title):
-
-    index = ''
+    # Initialise these variables.
+    index = -1 # -1 is a nonsense value so if index fails to get assigned we know something went wrong.
     tag = ''
+    frameNumberInt = -1 # -1 is a nonsense value.
 
-    index = title[:3]
-    frameNumberString = title[-3:] # Extract last 3 characters from title.
+    index = int(title[:3]) # Extract the first 3 characters from the title. In the raw naming convention, this corresponds to the index value.
+
+    frameNumberString = title[-3:] # Extract last 3 characters from title. This corresponds to the frame number and we will now to try to extract the integer value from this.
 
     try: # Try to extract an integer from the 3 characters we extracted.
         frameNumberInt = int(frameNumberString)
-        tag = title[3:-3]
+        tag = title[4:-3] # Used 4 index here because there is a dash at the beginning of all the tags for some reason.
     except ValueError: 
         print('This frameNumber only has 2 digits. Trying to extract number from 2 digits now:')
         try: # Try to extract an integer from the last 2 digits then.
@@ -35,7 +28,7 @@ def tryToExtractInfoFromRawImageName(title):
             frameNumberInt = int(frameNumberString[2:])
             tag = title[3:-1]
 
-    print('index: ' + index + ', tag: ' + tag + ', frameNumber: ' + str(frameNumberInt))
+    print('index: ' + str(index) + ', tag: ' + tag + ', frameNumber: ' + str(frameNumberInt))
     return index, tag, frameNumberInt
 
 
@@ -45,21 +38,17 @@ def extractInfoFromFormattedImageName(title):
     frameNumber = int(splittedTitle[1][1:])
     indexAndTag = splittedTitle[0].split('tag')
     tag = indexAndTag[1][1:-1]
-    index = indexAndTag[0][-3:-1]
-    print('index: ' + index + ', tag: ' + tag + ', frameNumber: ' + str(frameNumber))
-
+    index = int(indexAndTag[0].split('index')[1][1:-1])
+    
     return index, tag, frameNumber
 
 def cleanUpVideoNames(dir, pattern, titlePattern):
     for pathAndFilename in glob.iglob(os.path.join(dir,pattern)):
         title, ext = os.path.splitext(os.path.basename(pathAndFilename))
 
-        index, tag, frameNumber = tryToExtractInfoFromImageName(title)
+        index, tag, frameNumber = tryToExtractInfoFromRawImageName(title)
 
-        os.rename(pathAndFilename,
-                  os.path.join(dir,titlePattern % (index, tag, frameNumber) + ext))
-
-        # print(os.path.join(dir,titlePattern % (index, tag, frameNumber) + ext))
+        cleanRename(pathAndFileName, titlePattern, index, tag, frameNumber)
 
 
 def extractInfoFromAllImages(dir, pattern):
@@ -67,18 +56,17 @@ def extractInfoFromAllImages(dir, pattern):
     for pathAndFilename in glob.iglob(os.path.join(dir,pattern)):
         title, ext = os.path.splitext(os.path.basename(pathAndFilename))
         index, tag, frameNumber = extractInfoFromFormattedImageName(title)
+        print('index: ' + str(index) + ', tag: ' + tag + ', frameNumber: ' + str(frameNumber))
+        
 
-def rename(dir, pattern, titlePattern):
-    for pathAndFilename in glob.iglob(os.path.join(dir,pattern)):
-        title, ext = os.path.splitext(os.path.basename(pathAndFilename))
-##        os.rename(pathAndFilename,
-##                  os.path.join(dir,titlePattern % title + ext))
-
-        # print(pathAndFilename)
-        #print(os.path.basename(pathAndFilename))
-        head, tail = os.path.split(pathAndFilename)
-        print('head:' + head)
-        print('tail:' + tail)
+def cleanRename(pathAndFilename,titlePattern, index, tag, frameNumber):
+    title, ext = os.path.splitext(os.path.basename(pathAndFilename))
+    
+    print (pathAndFilename)
+    print (os.path.dirname(pathAndFilename) + '/' + titlePattern % (index, tag, frameNumber) + ext)
+    os.rename(pathAndFilename,
+              os.path.dirname(pathAndFilename) + '/' + titlePattern % (index, tag, frameNumber) + ext)
+    
 
 def removeOver180Frames(dir, pattern):
     for pathAndFilename in glob.iglob(os.path.join(dir,pattern)):
@@ -93,8 +81,8 @@ def removeOver180Frames(dir, pattern):
 
 def identifyAndAdjustTimeAdjustedVideos(dir, pattern, timeAdjustmentData):
     tag = timeAdjustmentData[0]
-    startFrame = timeAdjustmentData[3]
-    endFrame = timeAdjustmentData[4]
+    startFrame = int(timeAdjustmentData[3])
+    endFrame = int(timeAdjustmentData[4])
     print('searching for ' + tag)
     
     for pathAndFilename in glob.iglob(os.path.join(dir,pattern)):
@@ -106,16 +94,15 @@ def identifyAndAdjustTimeAdjustedVideos(dir, pattern, timeAdjustmentData):
 
 def incrementFrameCounterForAGivenImage(pathAndFilename,counterIncrement):
     title, ext = os.path.splitext(os.path.basename(pathAndFilename))
-    lastThreeChars = title[-3:]
-    beforeLastThreeChars = title[:-3]
-    # print(lastThreeChars)
-    lastThreeCharsInt = int(lastThreeChars)
-    lastThreeCharsInt += int(counterIncrement)
 
-    # rename so that the last three characters of the title are replaced with the newly incremented frame numbers.
-    
-    os.rename(pathAndFilename,
-              os.path.dirname(pathAndFilename) + '/' + beforeLastThreeChars + str(lastThreeCharsInt) + ext)
+    index, tag, frameNumber = extractInfoFromFormattedImageName(title)
+
+    print('frameNumber: ' + str(frameNumber))
+    print('counterIncrement: ' + str(counterIncrement))
+    frameNumber += counterIncrement
+    # print('frameNumber: ' + str(frameNumber))
+
+    cleanRename(pathAndFilename, standardCleanTitlePattern, index, tag, frameNumber)
 
                              
 def incrementFrameCounterForAllVideosIdentifiedInTheCSVFile(csvFilePath,imageDirectory):
@@ -125,10 +112,11 @@ def incrementFrameCounterForAllVideosIdentifiedInTheCSVFile(csvFilePath,imageDir
         for row in reader:
             # print(row[0])
             if counter != 0:
-                # tags.append(row[0])
-                # tag = row[0]
-                identifyAndAdjustTimeAdjustedVideos(imageDirectory,r'*.jpg',row)
-                # if row[0] 
+                if int(row[3]) > 0: # If we actually have a startFrame which is greater than 0, then go and adjust the timing.
+                    # tags.append(row[0])
+                    # tag = row[0]
+                    identifyAndAdjustTimeAdjustedVideos(imageDirectory,r'*.jpg',row)
+                    # if row[0] 
             counter = counter + 1
 
         print('finished') 
@@ -137,14 +125,16 @@ def incrementFrameCounterForAllVideosIdentifiedInTheCSVFile(csvFilePath,imageDir
     # print(tags)
         
 
-            
+
+## Main Program Execution           
+
+
+# cleanUpVideoNames(r'./img',r'*.jpg',standardCleanTitlePattern)
+
+# extractInfoFromAllImages(r'./img',r'*.jpg')
+
+# 3. Adjust Frame Numbers to Correspond to Start Times Defined In CSV File
+
+incrementFrameCounterForAllVideosIdentifiedInTheCSVFile('frameTimingAdjustments.csv',r'./img/')
 
 # removeOver180Frames(r'./', r'*.jpg')
-
-# checkFor3DigitFrameNumbers(r'./img',r'*.jpg')
-
-# cleanUpVideoNames(r'./img',r'*.jpg',r'index_%s_tag_%s_frameNumber_%s')
-
-extractInfoFromAllImages(r'./img',r'*.jpg')
-
-# incrementFrameCounterForAllVideosIdentifiedInTheCSVFile('frameTimingAdjustments.csv',r'./img/')
