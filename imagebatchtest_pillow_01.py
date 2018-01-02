@@ -128,6 +128,25 @@ def removeOver180Frames(dir, pattern):
             shutil.move(os.path.join(dir,title+ext),'./over180FramesFolder/' + title + ext)
 
 
+
+def pasteImagesIntoGlobalFinalImage(dir, pattern):
+    for pathAndFileName in glob.iglob(os.path.join(dir,pattern)):
+        im = Image.open(pathAndFileName)
+        print(im.format, im.size, im.mode)
+        print(im.size[0])
+        print(im.size[1])
+        box = (0,0,im.size[0],im.size[1])
+        region = im.crop(box)
+        print(region.format)
+        print(region.mode)
+        # print(region.size[0])
+        # print(region.size[1])
+        # box = ()
+        globalFinalImage = Image.new('RGB',(20000,20000),'black')
+        globalFinalImage.paste(im, box)
+        globalFinalImage.save('./test.jpg')
+
+
 ## Main Program Execution           
 
 
@@ -145,4 +164,5 @@ def removeOver180Frames(dir, pattern):
 
 # 5. Start some image crep.
 
+pasteImagesIntoGlobalFinalImage(r'./img/',r'*.jpg')
 
