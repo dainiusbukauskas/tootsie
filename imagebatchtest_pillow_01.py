@@ -1,5 +1,5 @@
 from PIL import Image
-import glob, os, shutil, csv
+import glob, os, shutil, csv, math, time
 
 
 standardCleanTitlePattern = r'index_%s_tag_%s_frameNumber_%s'
@@ -130,39 +130,117 @@ def removeOver180Frames(dir, pattern):
 
 
 def pasteImagesIntoGlobalFinalImage(dir, pattern):
-    counter = 0
-    globalFinalImage = Image.new('RGB',(20000,20000),'black')
-
+    numberOfImagesToPaste = 35000
+    
     width = 1920
     height = 1080
+
+    numberOfImagesX = 213
+    numberOfImagesY = 180
+
+    maxPixelsAdjustmentFactor = 4
+
+    maxPixels = 0.5 * math.pow(10,9) * maxPixelsAdjustmentFactor # 1 billion pixels (1 gigapixel)
+
+    scaleFactor = computeScaleFactorForMaximumPixels(width,height,numberOfImagesX,numberOfImagesY,maxPixels)
+
+    print('scaleFactor: ' + str(scaleFactor))
+    # sys.stdout.write('scaleFactor: ' + str(scaleFactor))
+
+    globalFinalImageWidth = math.floor(width * numberOfImagesX * scaleFactor)
+    globalFinalImageHeight = math.floor(height * numberOfImagesY * scaleFactor)
+
+    print('globalFinalImageWidth: ' + str(globalFinalImageWidth))
+    print('globalFinalImageHeight: ' + str(globalFinalImageHeight))
+
+    globalFinalImage = Image.new('RGB',(globalFinalImageWidth,globalFinalImageHeight),'black')
+
+    scaledWidth = math.floor(width * scaleFactor)
+    scaledHeight = math.floor(height * scaleFactor)
+
+    print('scaledWidth: ' + str(scaledWidth))
+    print('scaledHeight: ' + str(scaledHeight))
+
     cropBox = (0,0,width,height)
+
+    # print('cropBox: ')
+    # print(cropBox)
+
+    counter = 0
+
+    startTime = time.time()
     
     for pathAndFilename in glob.iglob(os.path.join(dir,pattern)):
-        if counter < 2:
+        imageManipulationStartTime = time.time()
+        if counter < numberOfImagesToPaste:
             title, ext = os.path.splitext(pathAndFilename)
 
             index, tag, frameNumber = extractInfoFromFormattedImageName(title)
 
-            print('opening image')
+            # print('opening image')
             im = Image.open(pathAndFilename)
 
             region = im.crop(cropBox)
+            # print('region: ')
+            # print(region)
 
-            topLeftCornerX = 0 + (index * width)
-            topLeftCornerY = 0 + (frameNumber * height)
-            bottomRightCornerX = 0 + ((index + 1) * width)
-            bottomRightCornerY = 0 + ((frameNumber + 1) * height)
+            resizedRegion = region.resize((scaledWidth, scaledHeight))
+            # print('region after resizing: ')
+            # print(resizedRegion)
+    
+            topLeftCornerX = 0 + (index * scaledWidth)
+            topLeftCornerY = 0 + (frameNumber * scaledHeight)
+            bottomRightCornerX = 0 + ((index + 1) * scaledWidth)
+            bottomRightCornerY = 0 + ((frameNumber + 1) * scaledHeight)
 
             pasteBox = (topLeftCornerX, topLeftCornerY, bottomRightCornerX, bottomRightCornerY)
             
-            print('pasting image')
-            globalFinalImage.paste(im, pasteBox)
+            # print('pasting image')
+            globalFinalImage.paste(resizedRegion, pasteBox)
+
+            percentComplete = counter / numberOfImagesToPaste
+
+            # print(, end='\r')
+
+            imageManipulationEndTime = time.time()
+
+            imageManipulationTimeElapsed = imageManipulationEndTime - imageManipulationStartTime
+
+            totalTimeEstimate = imageManipulationTimeElapsed * numberOfImagesToPaste
+
+            totalTimeElapsed = time.time() - startTime
+
+            totalRemainingTimeEstimate = totalTimeEstimate - totalTimeElapsed
+            
+            print('Pasting image ' + str(counter) + ' of ' + str(numberOfImagesToPaste) + '. ' + str(round(percentComplete,5)) + '% Completed. Time elapsed: ' + str(round(totalTimeElapsed/60,2)) + ' minutes. Estimated time remaining: ' + str(round(totalRemainingTimeEstimate/60,2)) + ' minutes.', end='\r')
+            
+            
         counter += 1
 
+    timeAtEndOfPasting = time.time()
+    timeTakenToPaste = timeAtEndOfPasting - startTime
+    print('',end='\n')
+    print('Pasting took ' + str(round(timeTakenToPaste/60,2)) + ' minutes in total. ')
+
     try:
-        globalFinalImage.save('./test.jpg')
+        # print('',end='\n')
+        print('Saving output image...')
+        savingStartTime = time.time()
+        globalFinalImage.save('./output.jpg')
+        savingEndTime = time.time()
+        print('Success! Saving completed in ' + str(round((savingEndTime - savingStartTime),4)) + ' seconds.')
     except IOError as error:
-        print('IOError: ' + error)
+        print('IOError: ' + str(error))
+
+    
+
+def computeScaleFactorForMaximumPixels(width, height, numberX, numberY, maxPixels):
+
+    # Ok so we need to find a choice of scaling factor such that the total number of pixels is less than maxPixels.
+
+    scaleFactor = math.sqrt(maxPixels / (numberX * width * numberY * height))
+    
+    return scaleFactor
         
 ## Main Program Execution           
 
