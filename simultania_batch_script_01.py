@@ -1,5 +1,5 @@
 from PIL import Image
-import glob, os, shutil, csv, math, time
+import glob, os, shutil, csv, math, time, subprocess
 
 
 standardCleanTitlePattern = r'index_%s_tag_%s_frameNumber_%s'
@@ -234,6 +234,52 @@ def pasteImagesIntoGlobalFinalImage(dir, pattern):
 
     
 
+def pasteImagesIntoTestImage(videosWhichStartAtZeroButEndBefore179, videosWhichStartAfterZeroButEndAt179, videosWhichStartAtZeroAndEndAt179):
+
+    testImage = Image.new('RGB',(213,179),'black')
+
+    x = 0
+
+
+    # for video in videosWhichStartAtZeroAndEndAt179:
+    #     for imageFile in video.imageFiles:
+    #         pasteImage = Image.new('RGB',(1,1),'white')
+    #         pasteBox = (x,imageFile.frameNumber, x+1, imageFile.frameNumber+1)
+    #         testImage.paste(pasteImage,pasteBox)
+
+    #     x += 1 
+
+    # for video in videosWhichStartAfterZeroButEndAt179:
+    #     for imageFile in video.imageFiles:
+    #         pasteImage = Image.new('RGB',(1,1),'white')
+    #         pasteBox = (x,imageFile.frameNumber, x+1, imageFile.frameNumber+1)
+    #         testImage.paste(pasteImage,pasteBox)
+
+    #     x += 1
+
+    for video in videosWhichStartAtZeroButEndBefore179:
+        for imageFile in video.imageFiles:
+            pasteImage = Image.new('RGB',(1,1),'white')
+            pasteBox = (x,imageFile.frameNumber, x+1, imageFile.frameNumber+1)
+            testImage.paste(pasteImage,pasteBox)
+
+        x += 1
+
+    try:
+        # print('',end='\n')
+        print('Saving test output image...')
+        savingStartTime = time.time()
+        testImage.save('./position_test_output.jpg')
+        savingEndTime = time.time()
+        print('Success! Saving completed in ' + str(round((savingEndTime - savingStartTime),4)) + ' seconds.')
+        print('Opening image now...')
+        openTestImageCommand = "open position_test_output.jpg"
+        process = subprocess.Popen(openTestImageCommand.split(), stdout=subprocess.PIPE)
+        output, error = process.communicate()
+    except IOError as error:
+        print('IOError: ' + str(error))
+
+
 def computeScaleFactorForMaximumPixels(width, height, numberX, numberY, maxPixels):
 
     # Ok so we need to find a choice of scaling factor such that the total number of pixels is less than maxPixels.
@@ -241,6 +287,93 @@ def computeScaleFactorForMaximumPixels(width, height, numberX, numberY, maxPixel
     scaleFactor = math.sqrt(maxPixels / (numberX * width * numberY * height))
     
     return scaleFactor
+
+
+def returnSortedVideos(dir, pattern):
+
+    videos = {}
+
+
+    # Add ImageFiles to Videos
+    for pathAndFilename in glob.iglob(os.path.join(dir,pattern)):
+        title, ext = os.path.splitext(os.path.basename(pathAndFilename))
+
+        index, tag, frameNumber = extractInfoFromFormattedImageName(title)
+
+        anImageFile = ImageFile(pathAndFilename, index, tag, frameNumber)
+
+        if index in videos: # If the a video with the current index already exists in the Videos dictionary.
+            # print('This video already exists. Adding the current ImageFile to it now...')
+            videos[index].addImageFile(anImageFile) # Add an ImageFile to the video at the current index.
+        else: 
+            # print('This video does not exist yet. Creating a new Video and adding the current ImageFile to it now...')
+            aVideo = Video(index) # Construct a new Video object.
+            aVideo.addImageFile(anImageFile) # Add the current ImageFile to the newly created Video object.
+            videos[index] = aVideo
+
+
+    for index, video in videos.items():
+        video.sortImageFilesInAscendingOrderByFrameNumber()
+
+    videosList = list(videos.values())
+
+    videosWhichStartAtZeroButEndBefore179 = []
+
+    videosWhichStartAtZeroAndEndAt179 = []
+
+    videosWhichStartAfterZeroButEndAt179 = []
+
+    for video in videosList:
+        if video.index == 0:
+            if video.getEndFrame() < 179:
+                videosWhichStartAtZeroButEndBefore179.append(video)
+            else: 
+                videosWhichStartAtZeroAndEndAt179.append(video)
+        else:
+            videosWhichStartAfterZeroButEndAt179.append(video)
+
+
+    videosWhichStartAtZeroButEndBefore179.sort(key = lambda x: x.getNumberOfFrames())
+    videosWhichStartAfterZeroButEndAt179.sort(key = lambda x: x.getNumberOfFrames(), reverse = True)
+
+    return videosWhichStartAtZeroButEndBefore179, videosWhichStartAtZeroAndEndAt179, videosWhichStartAfterZeroButEndAt179
+
+class Video:
+    def __init__(self, indexIn):
+        self.index = indexIn
+        #self.startFrame = startFrameIn
+        #self.endFrame = endFrameIn
+        self.imageFiles = []
+        # self.startFrame = -1
+        # self.endFrame = -1
+        # self.numberOfFrames = -1
+
+    def addImageFile(self, imageFile):
+        self.imageFiles.append(imageFile)
+
+    def sortImageFilesInAscendingOrderByFrameNumber(self):
+        self.imageFiles.sort(key = lambda x: x.frameNumber)
+
+    def getStartFrame(self): # This will only return the lowest frameNumber if the imageFiles have already been sorted.
+        return self.imageFiles[0].frameNumber
+
+    def getEndFrame(self):
+        return self.imageFiles[-1].frameNumber
+
+    def getNumberOfFrames(self):
+        return self.getEndFrame() - self.getStartFrame()
+
+
+    # def checkFrameContinuity(self):
+
+    #     return true
+
+class ImageFile:
+    def __init__(self, filePath, index, tag, frameNumber):
+        self.filePath = filePath
+        self.index = index
+        self.tag = tag
+        self.frameNumber = frameNumber
         
 ## Main Program Execution           
 
@@ -256,7 +389,29 @@ def computeScaleFactorForMaximumPixels(width, height, numberX, numberY, maxPixel
 
 # removeOver180Frames(r'./img/', r'*.jpg')
 
-# 5. Start some image crep.
+# 5. Sort Videos
 
-pasteImagesIntoGlobalFinalImage(r'./img/',r'*.jpg')
+
+
+
+# anImageFile = ImageFile('someFilePath')
+
+# aVideo = Video(5,9)
+
+# aVideo.addImageFile(anImageFile)
+
+# print(aVideo.imageFiles[0].path)
+
+videosWhichStartAtZeroButEndBefore179, videosWhichStartAtZeroAndEndAt179, videosWhichStartAfterZeroButEndAt179 = returnSortedVideos(r'./img/',r'*.jpg')
+
+pasteImagesIntoTestImage(videosWhichStartAfterZeroButEndAt179, videosWhichStartAtZeroAndEndAt179, videosWhichStartAtZeroButEndBefore179)
+
+# print('printing out all the imageFile paths in all the videos...')
+# for index, video in videos.items():
+#     for imageFile in video.imageFiles:
+#         print (imageFile.filePath)
+
+# 6. Start some image crep.
+
+# pasteImagesIntoGlobalFinalImage(r'./img/',r'*.jpg')
 
