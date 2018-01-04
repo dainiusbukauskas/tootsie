@@ -241,21 +241,21 @@ def pasteImagesIntoTestImage(videosWhichStartAtZeroButEndBefore179, videosWhichS
     x = 0
 
 
-    # for video in videosWhichStartAtZeroAndEndAt179:
-    #     for imageFile in video.imageFiles:
-    #         pasteImage = Image.new('RGB',(1,1),'white')
-    #         pasteBox = (x,imageFile.frameNumber, x+1, imageFile.frameNumber+1)
-    #         testImage.paste(pasteImage,pasteBox)
+    for video in videosWhichStartAtZeroAndEndAt179:
+        for imageFile in video.imageFiles:
+            pasteImage = Image.new('RGB',(1,1),'white')
+            pasteBox = (x,imageFile.frameNumber, x+1, imageFile.frameNumber+1)
+            testImage.paste(pasteImage,pasteBox)
 
-    #     x += 1 
+        x += 1 
 
-    # for video in videosWhichStartAfterZeroButEndAt179:
-    #     for imageFile in video.imageFiles:
-    #         pasteImage = Image.new('RGB',(1,1),'white')
-    #         pasteBox = (x,imageFile.frameNumber, x+1, imageFile.frameNumber+1)
-    #         testImage.paste(pasteImage,pasteBox)
+    for video in videosWhichStartAfterZeroButEndAt179:
+        for imageFile in video.imageFiles:
+            pasteImage = Image.new('RGB',(1,1),'white')
+            pasteBox = (x,imageFile.frameNumber, x+1, imageFile.frameNumber+1)
+            testImage.paste(pasteImage,pasteBox)
 
-    #     x += 1
+        x += 1
 
     for video in videosWhichStartAtZeroButEndBefore179:
         for imageFile in video.imageFiles:
@@ -324,12 +324,17 @@ def returnSortedVideos(dir, pattern):
     videosWhichStartAfterZeroButEndAt179 = []
 
     for video in videosList:
-        if video.index == 0:
+        print('Examining video with index ' + str(video.index))
+        if video.getStartFrame() == 0:
+            print('video.getStartFrame() = 0.')
             if video.getEndFrame() < 179:
+                print('video.getEndFrame() < 179.')
                 videosWhichStartAtZeroButEndBefore179.append(video)
             else: 
+                print('video.getEndFrame() = 179.')
                 videosWhichStartAtZeroAndEndAt179.append(video)
         else:
+            print('video.getEndFrame() > 0.')
             videosWhichStartAfterZeroButEndAt179.append(video)
 
 
@@ -403,6 +408,10 @@ class ImageFile:
 # print(aVideo.imageFiles[0].path)
 
 videosWhichStartAtZeroButEndBefore179, videosWhichStartAtZeroAndEndAt179, videosWhichStartAfterZeroButEndAt179 = returnSortedVideos(r'./img/',r'*.jpg')
+
+
+# for video in videosWhichStartAfterZeroButEndAt179:
+#     print(video.getStartFrame())
 
 pasteImagesIntoTestImage(videosWhichStartAfterZeroButEndAt179, videosWhichStartAtZeroAndEndAt179, videosWhichStartAtZeroButEndBefore179)
 
