@@ -266,7 +266,7 @@ def pasteImagesIntoGlobalFinalImage(dir, pattern):
 
 def pasteImagesIntoTestImage(videosWhichStartAtZeroButEndBefore179, videosWhichStartAfterZeroButEndAt179, videosWhichStartAtZeroAndEndAt179):
 
-    testImage = Image.new('RGB',(213,179),'black')
+    testImage = Image.new('RGB',(212,179),'black')
 
     x = 0
 
@@ -304,8 +304,8 @@ def pasteImagesIntoTestImage(videosWhichStartAtZeroButEndBefore179, videosWhichS
         print('Success! Saving completed in ' + str(round((savingEndTime - savingStartTime),4)) + ' seconds.')
         print('Opening image now...')
         openTestImageCommand = "open position_test_output.jpg"
-        # process = subprocess.Popen(openTestImageCommand.split(), stdout=subprocess.PIPE)
-        # output, error = process.communicate()
+        process = subprocess.Popen(openTestImageCommand.split(), stdout=subprocess.PIPE)
+        output, error = process.communicate()
     except IOError as error:
         print('IOError: ' + str(error))
 
@@ -444,7 +444,7 @@ class ImageFile:
 
 # 3. Remove all images with frameNumbers higher than 179.
 
-removeOver180Frames(destinationImageDirectory, r'*.jpg')
+# removeOver180Frames(destinationImageDirectory, r'*.jpg')
 
 # 5. Sort Videos
 
@@ -459,13 +459,13 @@ removeOver180Frames(destinationImageDirectory, r'*.jpg')
 
 # print(aVideo.imageFiles[0].path)
 
-# videosWhichStartAtZeroButEndBefore179, videosWhichStartAtZeroAndEndAt179, videosWhichStartAfterZeroButEndAt179 = returnSortedVideos(r'./img/',r'*.jpg')
+videosWhichStartAtZeroButEndBefore179, videosWhichStartAtZeroAndEndAt179, videosWhichStartAfterZeroButEndAt179 = returnSortedVideos(destinationImageDirectory,r'*.jpg')
 
 
 # for video in videosWhichStartAfterZeroButEndAt179:
 #     print(video.getStartFrame())
 
-# pasteImagesIntoTestImage(videosWhichStartAfterZeroButEndAt179, videosWhichStartAtZeroAndEndAt179, videosWhichStartAtZeroButEndBefore179)
+pasteImagesIntoTestImage(videosWhichStartAfterZeroButEndAt179, videosWhichStartAtZeroAndEndAt179, videosWhichStartAtZeroButEndBefore179)
 
 # print('printing out all the imageFile paths in all the videos...')
 # for index, video in videos.items():
