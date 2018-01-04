@@ -2,7 +2,10 @@ from PIL import Image
 import glob, os, shutil, csv, math, time, subprocess
 
 
-standardCleanTitlePattern = r'index_%s_tag_%s_frameNumber_%s'
+standardCleanTitlePattern = r'index_%s_tag_%s_frameNumber_%s_incremented_%s'
+sourceImageDirectory = r'./srcimg/'
+destinationImageDirectory = r'./dstimg/'
+
 
 def tryToExtractInfoFromRawImageName(title): # This function extracts the data from the original raw image file names.
 
@@ -34,13 +37,18 @@ def tryToExtractInfoFromRawImageName(title): # This function extracts the data f
 
 def extractInfoFromFormattedImageName(title):
 
-    splittedTitle = title.split('frameNumber')
-    frameNumber = int(splittedTitle[1][1:])
-    indexAndTag = splittedTitle[0].split('tag')
-    tag = indexAndTag[1][1:-1]
-    index = int(indexAndTag[0].split('index')[1][1:-1])
-    
-    return index, tag, frameNumber
+    # Extract all of the data from the formatted image name.
+
+    incrementedText = title.split('incremented')
+    incremented = incrementedText[1][1:]
+    frameNumberText = incrementedText[0].split('frameNumber')
+    frameNumber = int(frameNumberText[1][1:-1])
+    tagText = frameNumberText[0].split('tag')
+    tag = tagText[1][1:-1]
+    indexText = tagText[0].split('index')
+    index = int(indexText[1][1:-1])
+
+    return index, tag, frameNumber, incremented
 
 def cleanUpVideoNames(dir, pattern, titlePattern):
     for pathAndFilename in glob.iglob(os.path.join(dir,pattern)):
@@ -48,55 +56,64 @@ def cleanUpVideoNames(dir, pattern, titlePattern):
 
         index, tag, frameNumber = tryToExtractInfoFromRawImageName(title)
 
-        cleanRename(pathAndFileName, titlePattern, index, tag, frameNumber)
+        incremented = 'false'
+
+        cleanRename(pathAndFilename, titlePattern, index, tag, frameNumber, incremented)
 
 
 def extractInfoFromAllImages(dir, pattern):
 
     for pathAndFilename in glob.iglob(os.path.join(dir,pattern)):
         title, ext = os.path.splitext(os.path.basename(pathAndFilename))
-        index, tag, frameNumber = extractInfoFromFormattedImageName(title)
-        print('index: ' + str(index) + ', tag: ' + tag + ', frameNumber: ' + str(frameNumber))
+        index, tag, frameNumber, incremented = extractInfoFromFormattedImageName(title)
+        print('Extracting info from formatted image: index: ' + str(index) + ', tag: ' + tag + ', frameNumber: ' + str(frameNumber) + ', incremented: ' + incremented)
         
 
-def cleanRename(pathAndFilename,titlePattern, index, tag, frameNumber):
+def cleanRename(pathAndFilename,titlePattern, index, tag, frameNumber, incremented):
     title, ext = os.path.splitext(os.path.basename(pathAndFilename))
     
+    print ('Clean renaming from...')
     print (pathAndFilename)
-    print (os.path.dirname(pathAndFilename) + '/' + titlePattern % (index, tag, frameNumber) + ext)
+    print ('...to...')
+    print (os.path.dirname(pathAndFilename) + '/' + titlePattern % (index, tag, frameNumber, incremented) + ext)
     os.rename(pathAndFilename,
-              os.path.dirname(pathAndFilename) + '/' + titlePattern % (index, tag, frameNumber) + ext)
-    
+              os.path.dirname(pathAndFilename) + '/' + titlePattern % (index, tag, frameNumber, incremented) + ext)
 
 
-
-def identifyAndAdjustTimeAdjustedVideos(dir, pattern, timeAdjustmentData):
+def identifyAndAdjustTimeAdjustedVideos(dir, destinationImageDirectory, pattern, timeAdjustmentData):
     tag = timeAdjustmentData[0]
     startFrame = int(timeAdjustmentData[3])
     endFrame = int(timeAdjustmentData[4])
-    print('searching for ' + tag)
+    print('Searching for ' + tag + '...')
     
     for pathAndFilename in glob.iglob(os.path.join(dir,pattern)):
         title, ext = os.path.splitext(os.path.basename(pathAndFilename))
         if tag in title:
-            # print('found a match: ' + title)
-            incrementFrameCounterForAGivenImage(pathAndFilename, startFrame)
+            print('Found a match for the tag: ' + tag + ' in ' + title)
+            incrementFrameCounterForAGivenImage(pathAndFilename, destinationImageDirectory, startFrame)
 
 
-def incrementFrameCounterForAGivenImage(pathAndFilename,counterIncrement):
+def incrementFrameCounterForAGivenImage(pathAndFilename, destinationImageDirectory, counterIncrement):
     title, ext = os.path.splitext(os.path.basename(pathAndFilename))
 
-    index, tag, frameNumber = extractInfoFromFormattedImageName(title)
+    index, tag, frameNumber, incremented = extractInfoFromFormattedImageName(title)
 
-    print('frameNumber: ' + str(frameNumber))
-    print('counterIncrement: ' + str(counterIncrement))
+    # print('frameNumber: ' + str(frameNumber))
+    # print('counterIncrement: ' + str(counterIncrement))
     frameNumber += counterIncrement
     # print('frameNumber: ' + str(frameNumber))
 
-    cleanRename(pathAndFilename, standardCleanTitlePattern, index, tag, frameNumber)
+    incremented = 'true'
+
+    print(destinationImageDirectory)
+    # Move the images to the destination directory.
+    print('Moving image to be incremented to : ' + os.path.join(destinationImageDirectory,title + ext))
+    shutil.move(pathAndFilename,os.path.join(destinationImageDirectory,title + ext))
+
+    cleanRename(os.path.join(destinationImageDirectory,title + ext), standardCleanTitlePattern, index, tag, frameNumber, incremented)
 
                              
-def incrementFrameCounterForAllVideosIdentifiedInTheCSVFile(csvFilePath,imageDirectory):
+def incrementFrameCounterForAllVideosIdentifiedInTheCSVFile(csvFilePath,sourceImageDirectory,destinationImageDirectory):
     with open (csvFilePath, 'r') as csvfile:
         reader = csv.reader(csvfile, delimiter = ',', quotechar = '|')  
         counter = 0
@@ -106,21 +123,34 @@ def incrementFrameCounterForAllVideosIdentifiedInTheCSVFile(csvFilePath,imageDir
                 if int(row[3]) > 0: # If we actually have a startFrame which is greater than 0, then go and adjust the timing.
                     # tags.append(row[0])
                     # tag = row[0]
-                    identifyAndAdjustTimeAdjustedVideos(imageDirectory,r'*.jpg',row)
+                    identifyAndAdjustTimeAdjustedVideos(sourceImageDirectory, destinationImageDirectory,r'*.jpg',row)
                     # if row[0] 
             counter = counter + 1
 
-        print('finished') 
+        print('Finished incrementing.') 
 
     # del tags[0]
     # print(tags)
-        
+       
+
+def moveRemainingUnincremementedVideosToTheDestinationImageDirectory(sourceImageDirectory, pattern, destinationImageDirectory):
+
+    for pathAndFilename in glob.iglob(os.path.join(sourceImageDirectory,pattern)):
+        title, ext = os.path.splitext(os.path.basename(pathAndFilename))
+
+        print(destinationImageDirectory)
+
+        print('Moving image which will not be incremented to : ' + os.path.join(destinationImageDirectory,title + ext))
+        shutil.move(pathAndFilename,os.path.join(destinationImageDirectory,title + ext))
+
+    print('Finished moving unincremented images.')
+
 
 def removeOver180Frames(dir, pattern):
     for pathAndFilename in glob.iglob(os.path.join(dir,pattern)):
         title, ext = os.path.splitext(os.path.basename(pathAndFilename))
 
-        index, tag, frameNumber = extractInfoFromFormattedImageName(title)
+        index, tag, frameNumber, incremented = extractInfoFromFormattedImageName(title)
        
         if frameNumber > 179:
             print('This image has a frame number higher than 179: ' + os.path.join(dir,title+ext))
@@ -175,7 +205,7 @@ def pasteImagesIntoGlobalFinalImage(dir, pattern):
         if counter < numberOfImagesToPaste:
             title, ext = os.path.splitext(pathAndFilename)
 
-            index, tag, frameNumber = extractInfoFromFormattedImageName(title)
+            index, tag, frameNumber, incremented = extractInfoFromFormattedImageName(title)
 
             # print('opening image')
             im = Image.open(pathAndFilename)
@@ -298,7 +328,7 @@ def returnSortedVideos(dir, pattern):
     for pathAndFilename in glob.iglob(os.path.join(dir,pattern)):
         title, ext = os.path.splitext(os.path.basename(pathAndFilename))
 
-        index, tag, frameNumber = extractInfoFromFormattedImageName(title)
+        index, tag, frameNumber, incremented = extractInfoFromFormattedImageName(title)
 
         anImageFile = ImageFile(pathAndFilename, index, tag, frameNumber)
 
@@ -395,17 +425,26 @@ class ImageFile:
         
 ## Main Program Execution           
 
-# cleanUpVideoNames(r'./img',r'*.jpg',standardCleanTitlePattern)
+# 1. Clean Up Image File Names
 
-# extractInfoFromAllImages(r'./img',r'*.jpg')
+# cleanUpVideoNames(sourceImageDirectory,r'*.jpg',standardCleanTitlePattern)
 
-# 3. Adjust Frame Numbers to Correspond to Start Times Defined In CSV File
+# 2. Adjust Frame Numbers to Correspond to Start Times Defined In CSV File
 
-# incrementFrameCounterForAllVideosIdentifiedInTheCSVFile('frameTimingAdjustments.csv',r'./img/')
+# Increment frame numbers and move them to the destination directory to prevent overwrites during the incrementing process.
 
-# 4. Remove all images with frameNumbers higher than 179.
+# A Test function used to see that we are parsing data from the filenames correctly.
+# extractInfoFromAllImages(sourceImageDirectory, r'*.jpg')
 
-# removeOver180Frames(r'./img/', r'*.jpg')
+# incrementFrameCounterForAllVideosIdentifiedInTheCSVFile('frameTimingAdjustments.csv',sourceImageDirectory,destinationImageDirectory)
+
+# Move the remaining unmodified videos to the destination directory as well.
+
+# moveRemainingUnincremementedVideosToTheDestinationImageDirectory(sourceImageDirectory, r'*.jpg', destinationImageDirectory)
+
+# 3. Remove all images with frameNumbers higher than 179.
+
+removeOver180Frames(destinationImageDirectory, r'*.jpg')
 
 # 5. Sort Videos
 
@@ -420,13 +459,13 @@ class ImageFile:
 
 # print(aVideo.imageFiles[0].path)
 
-videosWhichStartAtZeroButEndBefore179, videosWhichStartAtZeroAndEndAt179, videosWhichStartAfterZeroButEndAt179 = returnSortedVideos(r'./img/',r'*.jpg')
+# videosWhichStartAtZeroButEndBefore179, videosWhichStartAtZeroAndEndAt179, videosWhichStartAfterZeroButEndAt179 = returnSortedVideos(r'./img/',r'*.jpg')
 
 
 # for video in videosWhichStartAfterZeroButEndAt179:
 #     print(video.getStartFrame())
 
-pasteImagesIntoTestImage(videosWhichStartAfterZeroButEndAt179, videosWhichStartAtZeroAndEndAt179, videosWhichStartAtZeroButEndBefore179)
+# pasteImagesIntoTestImage(videosWhichStartAfterZeroButEndAt179, videosWhichStartAtZeroAndEndAt179, videosWhichStartAtZeroButEndBefore179)
 
 # print('printing out all the imageFile paths in all the videos...')
 # for index, video in videos.items():
