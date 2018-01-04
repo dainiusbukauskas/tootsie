@@ -274,8 +274,8 @@ def pasteImagesIntoTestImage(videosWhichStartAtZeroButEndBefore179, videosWhichS
         print('Success! Saving completed in ' + str(round((savingEndTime - savingStartTime),4)) + ' seconds.')
         print('Opening image now...')
         openTestImageCommand = "open position_test_output.jpg"
-        process = subprocess.Popen(openTestImageCommand.split(), stdout=subprocess.PIPE)
-        output, error = process.communicate()
+        # process = subprocess.Popen(openTestImageCommand.split(), stdout=subprocess.PIPE)
+        # output, error = process.communicate()
     except IOError as error:
         print('IOError: ' + str(error))
 
@@ -314,6 +314,8 @@ def returnSortedVideos(dir, pattern):
 
     for index, video in videos.items():
         video.sortImageFilesInAscendingOrderByFrameNumber()
+        if video.checkFrameContinuity() == False: 
+            print('Video with index: ' + str(video.index) + ', tag: ' + video.imageFiles[0].tag + ', startFrame: ' + str(video.getStartFrame()) + ', endFrame: ' + str(video.getEndFrame()) + ' has a break in frameNumber continuity.')
 
     videosList = list(videos.values())
 
@@ -324,17 +326,17 @@ def returnSortedVideos(dir, pattern):
     videosWhichStartAfterZeroButEndAt179 = []
 
     for video in videosList:
-        print('Examining video with index ' + str(video.index))
+        # print('Examining video with index ' + str(video.index))
         if video.getStartFrame() == 0:
-            print('video.getStartFrame() = 0.')
+            # print('video.getStartFrame() = 0.')
             if video.getEndFrame() < 179:
-                print('video.getEndFrame() < 179.')
+                # print('video.getEndFrame() < 179.')
                 videosWhichStartAtZeroButEndBefore179.append(video)
             else: 
-                print('video.getEndFrame() = 179.')
+                # print('video.getEndFrame() = 179.')
                 videosWhichStartAtZeroAndEndAt179.append(video)
         else:
-            print('video.getEndFrame() > 0.')
+            # print('video.getEndFrame() > 0.')
             videosWhichStartAfterZeroButEndAt179.append(video)
 
 
@@ -369,9 +371,20 @@ class Video:
         return self.getEndFrame() - self.getStartFrame()
 
 
-    # def checkFrameContinuity(self):
+    def checkFrameContinuity(self):
+        frameContinuity = True
+        frameNumber = -1
+        counter = 0
+        for imageFile in self.imageFiles:
+            if counter == 0:
+                frameNumber = imageFile.frameNumber
+            else:
+                if imageFile.frameNumber != frameNumber + 1:
+                    frameContinuity = False
+                frameNumber = imageFile.frameNumber
+            counter += 1
 
-    #     return true
+        return frameContinuity
 
 class ImageFile:
     def __init__(self, filePath, index, tag, frameNumber):
